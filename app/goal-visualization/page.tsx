@@ -35,9 +35,12 @@ export default function GoalVisualization() {
   );
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [sentenceToDelete, setSentenceToDelete] = useState<string | null>(null);
+  const [isPlayingAll, setIsPlayingAll] = useState(false);
+  const [playAllRepeatDuration, setPlayAllRepeatDuration] =
+    useState<RepeatDuration>("none");
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const audioRef = useRef<HTMLAudioElement[]>([]);
   const repeatIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
@@ -140,7 +143,7 @@ export default function GoalVisualization() {
     setCurrentPlayingIndex(index);
 
     const audio = new Audio(audioData);
-    audioRef.current = audio;
+    audioRef.current[index] = audio;
 
     const playOnce = () => {
       audio.play();
@@ -167,16 +170,19 @@ export default function GoalVisualization() {
   };
 
   const stopPlayback = () => {
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.currentTime = 0;
-      audioRef.current.removeEventListener("ended", () => {});
-    }
+    audioRef.current.forEach((audio) => {
+      if (audio) {
+        audio.pause();
+        audio.currentTime = 0;
+      }
+    });
     if (repeatIntervalRef.current) {
       clearTimeout(repeatIntervalRef.current);
     }
     setIsPlaying(false);
+    setIsPlayingAll(false);
     setRepeatDuration("none");
+    setPlayAllRepeatDuration("none");
     setCurrentPlayingIndex(null);
   };
 
@@ -197,6 +203,50 @@ export default function GoalVisualization() {
       );
       setDeleteModalOpen(false);
       setSentenceToDelete(null);
+    }
+  };
+
+  const playAllSentences = (repeat: RepeatDuration = "none") => {
+    if (isPlaying || isPlayingAll) {
+      stopPlayback();
+    }
+
+    setIsPlayingAll(true);
+    setPlayAllRepeatDuration(repeat);
+
+    const playNextSentence = (index: number) => {
+      if (index >= sentences.length) {
+        if (repeat === "none") {
+          stopPlayback();
+          return;
+        }
+        index = 0;
+      }
+
+      const sentence = sentences[index];
+      if (sentence.audioData) {
+        const audio = new Audio(sentence.audioData);
+        audioRef.current[index] = audio;
+
+        audio.onended = () => {
+          playNextSentence(index + 1);
+        };
+
+        audio.play();
+        setCurrentPlayingIndex(index);
+      } else {
+        playNextSentence(index + 1);
+      }
+    };
+
+    playNextSentence(0);
+
+    if (repeat !== "forever" && repeat !== "none") {
+      const duration =
+        repeat === "10min" ? 600000 : repeat === "30min" ? 1800000 : 3600000;
+      repeatIntervalRef.current = setTimeout(() => {
+        stopPlayback();
+      }, duration);
     }
   };
 
@@ -265,6 +315,37 @@ export default function GoalVisualization() {
           <h2 className="text-2xl font-bold mb-4">
             Psychokibernetic Sentences
           </h2>
+          <div className="mb-4 flex items-center space-x-2">
+            <button
+              onClick={() => playAllSentences("none")}
+              className="px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600"
+              disabled={isPlayingAll}
+            >
+              Play All Once
+            </button>
+            <select
+              onChange={(e) =>
+                playAllSentences(e.target.value as RepeatDuration)
+              }
+              className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
+              value={isPlayingAll ? playAllRepeatDuration : "none"}
+              disabled={isPlayingAll}
+            >
+              <option value="none">Repeat All...</option>
+              <option value="10min">10 minutes</option>
+              <option value="30min">30 minutes</option>
+              <option value="1hour">1 hour</option>
+              <option value="forever">Forever</option>
+            </select>
+            {isPlayingAll && (
+              <button
+                onClick={stopPlayback}
+                className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600"
+              >
+                Stop All
+              </button>
+            )}
+          </div>
           <ul className="space-y-4">
             {sentences.map((sentence, index) => (
               <li key={sentence.id} className="bg-gray-100 p-4 rounded">
@@ -285,6 +366,7 @@ export default function GoalVisualization() {
                         playSentenceAudio(sentence.audioData!, index, "none")
                       }
                       className="px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600"
+                      disabled={isPlayingAll}
                     >
                       Play Once
                     </button>
@@ -302,6 +384,7 @@ export default function GoalVisualization() {
                           ? repeatDuration
                           : "none"
                       }
+                      disabled={isPlayingAll}
                     >
                       <option value="none">Repeat...</option>
                       <option value="10min">10 minutes</option>
@@ -309,14 +392,16 @@ export default function GoalVisualization() {
                       <option value="1hour">1 hour</option>
                       <option value="forever">Forever</option>
                     </select>
-                    {isPlaying && index === currentPlayingIndex && (
-                      <button
-                        onClick={stopPlayback}
-                        className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600"
-                      >
-                        Stop
-                      </button>
-                    )}
+                    {isPlaying &&
+                      index === currentPlayingIndex &&
+                      !isPlayingAll && (
+                        <button
+                          onClick={stopPlayback}
+                          className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600"
+                        >
+                          Stop
+                        </button>
+                      )}
                   </div>
                 )}
               </li>
