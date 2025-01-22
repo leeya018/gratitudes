@@ -11,7 +11,8 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Trash2 } from "lucide-react";
+import { Slider } from "@/components/ui/slider";
+import { Trash2, Volume2 } from "lucide-react";
 
 interface SentenceRecord {
   id: string;
@@ -40,6 +41,7 @@ export default function GoalVisualization() {
     useState<RepeatDuration>("none");
   const [youtubeUrl, setYoutubeUrl] = useState("");
   const [isYoutubeAudioPlaying, setIsYoutubeAudioPlaying] = useState(false);
+  const [youtubeVolume, setYoutubeVolume] = useState(100);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const audioRef = useRef<HTMLAudioElement[]>([]);
@@ -52,7 +54,6 @@ export default function GoalVisualization() {
       setSentences(JSON.parse(savedSentences));
     }
 
-    // Load YouTube IFrame API
     if (!window.YT) {
       const tag = document.createElement("script");
       tag.src = "https://www.youtube.com/iframe_api";
@@ -60,7 +61,6 @@ export default function GoalVisualization() {
       firstScriptTag.parentNode?.insertBefore(tag, firstScriptTag);
     }
 
-    // Initialize YouTube player when API is ready
     window.onYouTubeIframeAPIReady = () => {
       youtubePlayerRef.current = new YT.Player("youtube-player", {
         height: "0",
@@ -83,6 +83,12 @@ export default function GoalVisualization() {
       }
     };
   }, []);
+
+  useEffect(() => {
+    if (youtubePlayerRef.current) {
+      youtubePlayerRef.current.setVolume(youtubeVolume);
+    }
+  }, [youtubeVolume]);
 
   const onPlayerStateChange = (event: YT.OnStateChangeEvent) => {
     if (event.data === YT.PlayerState.PLAYING) {
@@ -313,6 +319,10 @@ export default function GoalVisualization() {
     return match && match[2].length === 11 ? match[2] : null;
   };
 
+  const handleVolumeChange = (value: number[]) => {
+    setYoutubeVolume(value[0]);
+  };
+
   return (
     <div className="container mx-auto p-4">
       <h1 className="text-3xl font-bold mb-4">Goal Visualization</h1>
@@ -375,7 +385,7 @@ export default function GoalVisualization() {
 
       <div className="mt-8 mb-4">
         <h2 className="text-2xl font-bold mb-4">YouTube Background Audio</h2>
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-2 mb-2">
           <input
             type="text"
             value={youtubeUrl}
@@ -397,6 +407,17 @@ export default function GoalVisualization() {
           >
             Stop
           </button>
+        </div>
+        <div className="flex items-center space-x-2">
+          <Volume2 className="w-6 h-6 text-gray-500" />
+          <Slider
+            value={[youtubeVolume]}
+            onValueChange={handleVolumeChange}
+            max={100}
+            step={1}
+            className="w-48"
+          />
+          <span className="text-sm text-gray-500">{youtubeVolume}%</span>
         </div>
       </div>
 
