@@ -5,8 +5,10 @@ import Link from "next/link";
 
 interface SentenceRecord {
   text: string;
-  audioUrl?: string;
+  audioData?: string;
 }
+
+type RepeatDuration = "none" | "10min" | "30min" | "1hour" | "forever";
 
 export default function GoalVisualization() {
   const [target, setTarget] = useState("");
@@ -14,15 +16,30 @@ export default function GoalVisualization() {
   const [characters, setCharacters] = useState("");
   const [sentences, setSentences] = useState<SentenceRecord[]>([]);
   const [isRecording, setIsRecording] = useState(false);
-  const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const [audioData, setAudioData] = useState<string | null>(null);
+  const [repeatDuration, setRepeatDuration] = useState<RepeatDuration>("none");
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentPlayingIndex, setCurrentPlayingIndex] = useState<number | null>(
+    null
+  );
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const repeatIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     const savedSentences = localStorage.getItem("psychokiberneticSentences");
     if (savedSentences) {
       setSentences(JSON.parse(savedSentences));
     }
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (repeatIntervalRef.current) {
+        clearInterval(repeatIntervalRef.current);
+      }
+    };
   }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -70,27 +87,81 @@ export default function GoalVisualization() {
 
   const handleStop = () => {
     const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
-    const audioUrl = URL.createObjectURL(audioBlob);
-    setAudioUrl(audioUrl);
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      if (typeof reader.result === "string") {
+        setAudioData(reader.result);
+      }
+    };
+    reader.readAsDataURL(audioBlob);
     audioChunksRef.current = [];
   };
 
   const attachAudioToLastSentence = () => {
-    if (audioUrl) {
+    if (audioData) {
       const updatedSentences = [...sentences];
-      updatedSentences[updatedSentences.length - 1].audioUrl = audioUrl;
+      updatedSentences[updatedSentences.length - 1].audioData = audioData;
       setSentences(updatedSentences);
       localStorage.setItem(
         "psychokiberneticSentences",
         JSON.stringify(updatedSentences)
       );
-      setAudioUrl(null);
+      setAudioData(null);
     }
   };
 
-  const playSentenceAudio = (audioUrl: string) => {
-    const audio = new Audio(audioUrl);
-    audio.play();
+  const playSentenceAudio = (
+    audioData: string,
+    index: number,
+    repeat: RepeatDuration = "none"
+  ) => {
+    if (isPlaying) {
+      stopPlayback();
+    }
+
+    setIsPlaying(true);
+    setRepeatDuration(repeat);
+    setCurrentPlayingIndex(index);
+
+    const audio = new Audio(audioData);
+    audioRef.current = audio;
+
+    const playOnce = () => {
+      audio.play();
+    };
+
+    const setupRepeat = () => {
+      audio.addEventListener("ended", playOnce);
+      playOnce();
+
+      if (repeat !== "forever") {
+        const duration =
+          repeat === "10min" ? 600000 : repeat === "30min" ? 1800000 : 3600000;
+        repeatIntervalRef.current = setTimeout(() => {
+          stopPlayback();
+        }, duration);
+      }
+    };
+
+    if (repeat === "none") {
+      playOnce();
+    } else {
+      setupRepeat();
+    }
+  };
+
+  const stopPlayback = () => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+      audioRef.current.removeEventListener("ended", () => {});
+    }
+    if (repeatIntervalRef.current) {
+      clearTimeout(repeatIntervalRef.current);
+    }
+    setIsPlaying(false);
+    setRepeatDuration("none");
+    setCurrentPlayingIndex(null);
   };
 
   return (
@@ -162,13 +233,46 @@ export default function GoalVisualization() {
             {sentences.map((sentence, index) => (
               <li key={index} className="bg-gray-100 p-4 rounded">
                 <p>{sentence.text}</p>
-                {sentence.audioUrl && (
-                  <button
-                    onClick={() => playSentenceAudio(sentence.audioUrl!)}
-                    className="mt-2 px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600"
-                  >
-                    Play Recording
-                  </button>
+                {sentence.audioData && (
+                  <div className="mt-2 flex items-center space-x-2">
+                    <button
+                      onClick={() =>
+                        playSentenceAudio(sentence.audioData!, index, "none")
+                      }
+                      className="px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600"
+                    >
+                      Play Once
+                    </button>
+                    <select
+                      onChange={(e) =>
+                        playSentenceAudio(
+                          sentence.audioData!,
+                          index,
+                          e.target.value as RepeatDuration
+                        )
+                      }
+                      className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
+                      value={
+                        isPlaying && index === currentPlayingIndex
+                          ? repeatDuration
+                          : "none"
+                      }
+                    >
+                      <option value="none">Repeat...</option>
+                      <option value="10min">10 minutes</option>
+                      <option value="30min">30 minutes</option>
+                      <option value="1hour">1 hour</option>
+                      <option value="forever">Forever</option>
+                    </select>
+                    {isPlaying && index === currentPlayingIndex && (
+                      <button
+                        onClick={stopPlayback}
+                        className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600"
+                      >
+                        Stop
+                      </button>
+                    )}
+                  </div>
                 )}
               </li>
             ))}
@@ -176,10 +280,10 @@ export default function GoalVisualization() {
         </div>
       )}
 
-      {sentences.length > 0 && !sentences[sentences.length - 1].audioUrl && (
+      {sentences.length > 0 && !sentences[sentences.length - 1].audioData && (
         <div className="mt-4">
           <h3 className="text-xl font-bold mb-2">Record Your Sentence</h3>
-          {!isRecording && !audioUrl && (
+          {!isRecording && !audioData && (
             <button
               onClick={startRecording}
               className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
@@ -195,9 +299,9 @@ export default function GoalVisualization() {
               Stop Recording
             </button>
           )}
-          {audioUrl && (
+          {audioData && (
             <div>
-              <audio src={audioUrl} controls className="mt-2" />
+              <audio src={audioData} controls className="mt-2" />
               <button
                 onClick={attachAudioToLastSentence}
                 className="mt-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
