@@ -2,8 +2,19 @@
 
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Trash2 } from "lucide-react";
 
 interface SentenceRecord {
+  id: string;
   text: string;
   audioData?: string;
 }
@@ -22,6 +33,8 @@ export default function GoalVisualization() {
   const [currentPlayingIndex, setCurrentPlayingIndex] = useState<number | null>(
     null
   );
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [sentenceToDelete, setSentenceToDelete] = useState<string | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -44,8 +57,11 @@ export default function GoalVisualization() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const newSentence = `I am ${characters} and I am feeling ${emotions} now that I have ${target}.`;
-    const updatedSentences = [...sentences, { text: newSentence }];
+    const newSentence = {
+      id: Date.now().toString(),
+      text: `I am ${characters} and I am feeling ${emotions} now that I have ${target}.`,
+    };
+    const updatedSentences = [...sentences, newSentence];
     setSentences(updatedSentences);
     localStorage.setItem(
       "psychokiberneticSentences",
@@ -164,6 +180,26 @@ export default function GoalVisualization() {
     setCurrentPlayingIndex(null);
   };
 
+  const handleDeleteClick = (id: string) => {
+    setSentenceToDelete(id);
+    setDeleteModalOpen(true);
+  };
+
+  const confirmDelete = () => {
+    if (sentenceToDelete) {
+      const updatedSentences = sentences.filter(
+        (sentence) => sentence.id !== sentenceToDelete
+      );
+      setSentences(updatedSentences);
+      localStorage.setItem(
+        "psychokiberneticSentences",
+        JSON.stringify(updatedSentences)
+      );
+      setDeleteModalOpen(false);
+      setSentenceToDelete(null);
+    }
+  };
+
   return (
     <div className="container mx-auto p-4">
       <h1 className="text-3xl font-bold mb-4">Goal Visualization</h1>
@@ -231,8 +267,17 @@ export default function GoalVisualization() {
           </h2>
           <ul className="space-y-4">
             {sentences.map((sentence, index) => (
-              <li key={index} className="bg-gray-100 p-4 rounded">
-                <p>{sentence.text}</p>
+              <li key={sentence.id} className="bg-gray-100 p-4 rounded">
+                <div className="flex justify-between items-start">
+                  <p>{sentence.text}</p>
+                  <button
+                    onClick={() => handleDeleteClick(sentence.id)}
+                    className="text-red-500 hover:text-red-700"
+                    aria-label="Delete sentence"
+                  >
+                    <Trash2 size={20} />
+                  </button>
+                </div>
                 {sentence.audioData && (
                   <div className="mt-2 flex items-center space-x-2">
                     <button
@@ -319,6 +364,26 @@ export default function GoalVisualization() {
       >
         Back to Gratitude Journal
       </Link>
+
+      <Dialog open={deleteModalOpen} onOpenChange={setDeleteModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirm Deletion</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this psychokibernetic sentence?
+              This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={confirmDelete}>
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
