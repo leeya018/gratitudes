@@ -38,25 +38,62 @@ export default function GoalVisualization() {
   const [isPlayingAll, setIsPlayingAll] = useState(false);
   const [playAllRepeatDuration, setPlayAllRepeatDuration] =
     useState<RepeatDuration>("none");
+  const [youtubeUrl, setYoutubeUrl] = useState("");
+  const [isYoutubeAudioPlaying, setIsYoutubeAudioPlaying] = useState(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const audioRef = useRef<HTMLAudioElement[]>([]);
   const repeatIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const youtubePlayerRef = useRef<YT.Player | null>(null);
 
   useEffect(() => {
     const savedSentences = localStorage.getItem("psychokiberneticSentences");
     if (savedSentences) {
       setSentences(JSON.parse(savedSentences));
     }
-  }, []);
 
-  useEffect(() => {
+    // Load YouTube IFrame API
+    if (!window.YT) {
+      const tag = document.createElement("script");
+      tag.src = "https://www.youtube.com/iframe_api";
+      const firstScriptTag = document.getElementsByTagName("script")[0];
+      firstScriptTag.parentNode?.insertBefore(tag, firstScriptTag);
+    }
+
+    // Initialize YouTube player when API is ready
+    window.onYouTubeIframeAPIReady = () => {
+      youtubePlayerRef.current = new YT.Player("youtube-player", {
+        height: "0",
+        width: "0",
+        videoId: "",
+        playerVars: {
+          playsinline: 1,
+          controls: 0,
+          disablekb: 1,
+        },
+        events: {
+          onStateChange: onPlayerStateChange,
+        },
+      });
+    };
+
     return () => {
       if (repeatIntervalRef.current) {
         clearInterval(repeatIntervalRef.current);
       }
     };
   }, []);
+
+  const onPlayerStateChange = (event: YT.OnStateChangeEvent) => {
+    if (event.data === YT.PlayerState.PLAYING) {
+      setIsYoutubeAudioPlaying(true);
+    } else if (
+      event.data === YT.PlayerState.PAUSED ||
+      event.data === YT.PlayerState.ENDED
+    ) {
+      setIsYoutubeAudioPlaying(false);
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -250,6 +287,32 @@ export default function GoalVisualization() {
     }
   };
 
+  const playYoutubeAudio = () => {
+    if (youtubePlayerRef.current) {
+      const videoId = getYoutubeVideoId(youtubeUrl);
+      if (videoId) {
+        youtubePlayerRef.current.loadVideoById(videoId);
+        youtubePlayerRef.current.playVideo();
+      } else {
+        alert("Invalid YouTube URL");
+      }
+    }
+  };
+
+  const stopYoutubeAudio = () => {
+    if (youtubePlayerRef.current) {
+      youtubePlayerRef.current.stopVideo();
+      setIsYoutubeAudioPlaying(false);
+    }
+  };
+
+  const getYoutubeVideoId = (url: string) => {
+    const regExp =
+      /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+    const match = url.match(regExp);
+    return match && match[2].length === 11 ? match[2] : null;
+  };
+
   return (
     <div className="container mx-auto p-4">
       <h1 className="text-3xl font-bold mb-4">Goal Visualization</h1>
@@ -309,6 +372,33 @@ export default function GoalVisualization() {
           Generate Sentence
         </button>
       </form>
+
+      <div className="mt-8 mb-4">
+        <h2 className="text-2xl font-bold mb-4">YouTube Background Audio</h2>
+        <div className="flex items-center space-x-2">
+          <input
+            type="text"
+            value={youtubeUrl}
+            onChange={(e) => setYoutubeUrl(e.target.value)}
+            placeholder="Enter YouTube URL"
+            className="flex-grow px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          <button
+            onClick={playYoutubeAudio}
+            className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
+            disabled={isYoutubeAudioPlaying}
+          >
+            Play
+          </button>
+          <button
+            onClick={stopYoutubeAudio}
+            className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
+            disabled={!isYoutubeAudioPlaying}
+          >
+            Stop
+          </button>
+        </div>
+      </div>
 
       {sentences.length > 0 && (
         <div className="mt-8">
@@ -469,6 +559,8 @@ export default function GoalVisualization() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <div id="youtube-player"></div>
     </div>
   );
 }
