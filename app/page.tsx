@@ -6,7 +6,7 @@ import { getGratitudesForToday } from "./utils/gratitudes";
 
 export default async function Home() {
   const gratitudes = await getGratitudesForToday();
-  const isComplete = gratitudes.length >= 10;
+  const isComplete = gratitudes.length >= 20;
 
   return (
     <div className="container mx-auto p-4">
