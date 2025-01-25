@@ -1,14 +1,17 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useAuth } from "@/contexts/AuthContext";
 import { signOut } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 
 const Navbar = () => {
   const { user } = useAuth();
   const router = useRouter();
+  const [imageError, setImageError] = useState(false);
 
   const handleSignOut = async () => {
     try {
@@ -25,7 +28,7 @@ const Navbar = () => {
         <Link href="/" className="text-white text-2xl font-bold">
           Gratitude Journal
         </Link>
-        <ul className="flex space-x-4">
+        <ul className="flex items-center space-x-4">
           <li>
             <Link href="/" className="text-white hover:text-blue-200">
               Home
@@ -45,21 +48,39 @@ const Navbar = () => {
             </Link>
           </li>
           {user ? (
-            <li>
-              <button
-                onClick={handleSignOut}
-                className="text-white hover:text-blue-200"
-              >
-                Sign Out
-              </button>
-            </li>
-          ) : (
-            <li>
-              <Link href="/login" className="text-white hover:text-blue-200">
-                Login
-              </Link>
-            </li>
-          )}
+            <>
+              <li>
+                <button
+                  onClick={handleSignOut}
+                  className="text-white hover:text-blue-200"
+                >
+                  Sign Out
+                </button>
+              </li>
+              <li>
+                {user.photoURL && !imageError ? (
+                  <div className="w-8 h-8 rounded-full overflow-hidden">
+                    <Image
+                      src={user.photoURL || "/placeholder.svg"}
+                      alt="User profile"
+                      width={32}
+                      height={32}
+                      className="rounded-full"
+                      onError={() => setImageError(true)}
+                    />
+                  </div>
+                ) : (
+                  <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center">
+                    <span className="text-gray-600 text-sm">
+                      {user.displayName
+                        ? user.displayName[0].toUpperCase()
+                        : "U"}
+                    </span>
+                  </div>
+                )}
+              </li>
+            </>
+          ) : null}
         </ul>
       </div>
     </nav>
