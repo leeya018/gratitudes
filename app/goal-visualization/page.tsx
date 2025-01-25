@@ -13,11 +13,16 @@ import {
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Trash2, Volume2 } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { addSentence, getSentences, deleteSentence } from "../utils/sentences";
+import type { SentenceRecord } from "../types/sentences";
 
 interface SentenceRecord {
   id: string;
   text: string;
   audioData?: string;
+  userId?: string;
+  createdAt?: Date;
 }
 
 type RepeatDuration = "none" | "10min" | "30min" | "1hour" | "forever";
@@ -42,7 +47,9 @@ export default function GoalVisualization() {
   const [youtubeUrl, setYoutubeUrl] = useState("");
   const [isYoutubeAudioPlaying, setIsYoutubeAudioPlaying] = useState(false);
   const [youtubeVolume, setYoutubeVolume] = useState(100);
-  const [isRecordingSupported, setIsRecordingSupported] = useState(false); // Added state for recording support
+  const [isRecordingSupported, setIsRecordingSupported] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const audioRef = useRef<HTMLAudioElement[]>([]);
@@ -50,11 +57,6 @@ export default function GoalVisualization() {
   const youtubePlayerRef = useRef<YT.Player | null>(null);
 
   useEffect(() => {
-    const savedSentences = localStorage.getItem("psychokiberneticSentences");
-    if (savedSentences) {
-      setSentences(JSON.parse(savedSentences));
-    }
-
     if (!window.YT) {
       const tag = document.createElement("script");
       tag.src = "https://www.youtube.com/iframe_api";
@@ -85,6 +87,30 @@ export default function GoalVisualization() {
     };
   }, []);
 
+  // Load sentences from Firestore when user is available
+  useEffect(() => {
+    const loadSentences = async () => {
+      if (user) {
+        try {
+          setLoading(true);
+          const fetchedSentences = await getSentences(user.uid);
+          setSentences(
+            fetchedSentences.sort(
+              (a, b) => b.createdAt.getTime() - a.createdAt.getTime()
+            )
+          );
+        } catch (error) {
+          console.error("Error loading sentences:", error);
+          // Set sentences to an empty array if there's an error
+          setSentences([]);
+        } finally {
+          setLoading(false);
+        }
+      }
+    };
+    loadSentences();
+  }, [user]);
+
   useEffect(() => {
     if (youtubePlayerRef.current) {
       youtubePlayerRef.current.setVolume(youtubeVolume);
@@ -102,21 +128,27 @@ export default function GoalVisualization() {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const newSentence = {
-      id: Date.now().toString(),
-      text: `I am ${characters} and I am feeling ${emotions} now that I have ${target}.`,
-    };
-    const updatedSentences = [...sentences, newSentence];
-    setSentences(updatedSentences);
-    localStorage.setItem(
-      "psychokiberneticSentences",
-      JSON.stringify(updatedSentences)
-    );
-    setTarget("");
-    setEmotions("");
-    setCharacters("");
+    if (!user) return;
+
+    const text = `I am ${characters} and I am feeling ${emotions} now that I have ${target}.`;
+
+    try {
+      const id = await addSentence(user.uid, text);
+      const newSentence: SentenceRecord = {
+        id,
+        text,
+        userId: user.uid,
+        createdAt: new Date(),
+      };
+      setSentences((prev) => [newSentence, ...prev]);
+      setTarget("");
+      setEmotions("");
+      setCharacters("");
+    } catch (error) {
+      console.error("Error saving sentence:", error);
+    }
   };
 
   const startRecording = async () => {
@@ -163,16 +195,19 @@ export default function GoalVisualization() {
     audioChunksRef.current = [];
   };
 
-  const attachAudioToLastSentence = () => {
-    if (audioData) {
-      const updatedSentences = [...sentences];
-      updatedSentences[updatedSentences.length - 1].audioData = audioData;
-      setSentences(updatedSentences);
-      localStorage.setItem(
-        "psychokiberneticSentences",
-        JSON.stringify(updatedSentences)
+  const attachAudioToLastSentence = async () => {
+    if (!audioData || !user || sentences.length === 0) return;
+
+    const lastSentence = sentences[0]; // First sentence is the most recent
+    try {
+      await addSentence(user.uid, lastSentence.text, audioData);
+      const updatedSentences = sentences.map((sentence, index) =>
+        index === 0 ? { ...sentence, audioData } : sentence
       );
+      setSentences(updatedSentences);
       setAudioData(null);
+    } catch (error) {
+      console.error("Error attaching audio:", error);
     }
   };
 
@@ -238,18 +273,18 @@ export default function GoalVisualization() {
     setDeleteModalOpen(true);
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (sentenceToDelete) {
-      const updatedSentences = sentences.filter(
-        (sentence) => sentence.id !== sentenceToDelete
-      );
-      setSentences(updatedSentences);
-      localStorage.setItem(
-        "psychokiberneticSentences",
-        JSON.stringify(updatedSentences)
-      );
-      setDeleteModalOpen(false);
-      setSentenceToDelete(null);
+      try {
+        await deleteSentence(sentenceToDelete);
+        setSentences((prev) =>
+          prev.filter((sentence) => sentence.id !== sentenceToDelete)
+        );
+        setDeleteModalOpen(false);
+        setSentenceToDelete(null);
+      } catch (error) {
+        console.error("Error deleting sentence:", error);
+      }
     }
   };
 
@@ -335,6 +370,22 @@ export default function GoalVisualization() {
     setIsRecordingSupported(checkRecordingSupport());
   }, []);
 
+  if (!user) {
+    return (
+      <div className="container mx-auto p-4">
+        <p>Please log in to access Goal Visualization.</p>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="container mx-auto p-4">
+        <p>Loading your sentences...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="container mx-auto p-4">
       <h1 className="text-3xl font-bold mb-4">Goal Visualization</h1>
@@ -350,7 +401,7 @@ export default function GoalVisualization() {
             type="text"
             id="target"
             value={target}
-            placeholder="exmple: I am making 10K dollars a month"
+            placeholder="example: I am making 10K dollars a month"
             onChange={(e) => setTarget(e.target.value)}
             className="mt-1 block w-full px-4 py-2 text-xl border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
             required
@@ -367,7 +418,7 @@ export default function GoalVisualization() {
             type="text"
             id="emotions"
             value={emotions}
-            placeholder="exmple: happy and joy"
+            placeholder="example: happy and joy"
             onChange={(e) => setEmotions(e.target.value)}
             className="mt-1 block w-full px-4 py-2 text-xl border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
             required
@@ -383,7 +434,7 @@ export default function GoalVisualization() {
           <input
             type="text"
             id="characters"
-            placeholder="exmple: passionate and creative"
+            placeholder="example: passionate and creative"
             value={characters}
             onChange={(e) => setCharacters(e.target.value)}
             className="mt-1 block w-full px-4 py-2 text-xl border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
@@ -536,7 +587,7 @@ export default function GoalVisualization() {
         </div>
       )}
 
-      {sentences.length > 0 && !sentences[sentences.length - 1].audioData && (
+      {sentences.length > 0 && !sentences[0].audioData && (
         <div className="mt-4">
           <h3 className="text-xl font-bold mb-2">Record Your Sentence</h3>
           {checkRecordingSupport() ? (
@@ -605,6 +656,16 @@ export default function GoalVisualization() {
       </Dialog>
 
       <div id="youtube-player"></div>
+      {sentences.length > 0 ? (
+        <div className="mt-8">
+          {/* ... (sentences list JSX remains the same) */}
+        </div>
+      ) : (
+        <p className="mt-8 text-center text-gray-600">
+          You haven't created any sentences yet. Start by generating a new
+          sentence above!
+        </p>
+      )}
     </div>
   );
 }
