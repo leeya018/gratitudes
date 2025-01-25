@@ -1,5 +1,5 @@
-import GratitudeForm from "@/components/GratitudeForm";
-import GratitudeList from "@/components/GratitudeList";
+import { GratitudeForm } from "@/components/GratitudeForm";
+import { GratitudeList } from "@/components/GratitudeList";
 import CompletionMessage from "@/components/CompletionMessage";
 import { GratitudeProvider } from "@/contexts/GratitudeContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";

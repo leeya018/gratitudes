@@ -1,85 +1,100 @@
 import { db } from "@/lib/firebase";
 import {
-  collection,
-  addDoc,
+  doc,
+  setDoc,
+  getDoc,
+  updateDoc,
+  arrayUnion,
+  Timestamp,
   query,
   where,
   getDocs,
-  orderBy,
-  Timestamp,
+  collection,
 } from "firebase/firestore";
 
+interface GratitudeDocument {
+  userId: string;
+  date: string;
+  gratitudes: string[];
+  lastUpdated: Timestamp;
+}
+
 export async function getGratitudesForToday(userId: string): Promise<string[]> {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const tomorrow = new Date(today);
-  tomorrow.setDate(tomorrow.getDate() + 1);
+  if (!userId) throw new Error("User must be authenticated to get gratitudes");
 
-  const gratitudesRef = collection(db, "dailyGratitudes");
-  const q = query(
-    gratitudesRef,
-    where("userId", "==", userId),
-    where("createdAt", ">=", today),
-    where("createdAt", "<", tomorrow),
-    orderBy("createdAt", "desc")
-  );
+  const today = new Date().toISOString().split("T")[0];
+  const docRef = doc(db, "dailyGratitudes", `${userId}_${today}`);
+  const docSnap = await getDoc(docRef);
 
-  const querySnapshot = await getDocs(q);
-  return querySnapshot.docs.map((doc) => doc.data().text);
+  if (docSnap.exists()) {
+    return (docSnap.data() as GratitudeDocument).gratitudes;
+  }
+  return [];
 }
 
 export async function addGratitude(
   userId: string,
   gratitude: string
 ): Promise<void> {
-  await addDoc(collection(db, "dailyGratitudes"), {
-    userId,
-    text: gratitude,
-    createdAt: Timestamp.now(),
-  });
+  if (!userId) throw new Error("User must be authenticated to add a gratitude");
+
+  const today = new Date().toISOString().split("T")[0];
+  const docRef = doc(db, "dailyGratitudes", `${userId}_${today}`);
+  const docSnap = await getDoc(docRef);
+
+  if (docSnap.exists()) {
+    const data = docSnap.data() as GratitudeDocument;
+    if (data.gratitudes.length >= 10) {
+      throw new Error("Maximum of 10 gratitudes per day reached");
+    }
+    await updateDoc(docRef, {
+      gratitudes: arrayUnion(gratitude),
+      lastUpdated: Timestamp.now(),
+    });
+  } else {
+    await setDoc(docRef, {
+      userId,
+      date: today,
+      gratitudes: [gratitude],
+      lastUpdated: Timestamp.now(),
+    });
+  }
 }
 
 export async function getAllDates(userId: string): Promise<string[]> {
-  const gratitudesRef = collection(db, "dailyGratitudes");
+  if (!userId) throw new Error("User must be authenticated to get dates");
+
   const q = query(
-    gratitudesRef,
-    where("userId", "==", userId),
-    orderBy("createdAt", "desc")
+    collection(db, "dailyGratitudes"),
+    where("userId", "==", userId)
   );
-
   const querySnapshot = await getDocs(q);
-  const dates = querySnapshot.docs.map((doc) => {
-    const date = doc.data().createdAt.toDate();
-    return date.toISOString().split("T")[0];
-  });
+  const dates = querySnapshot.docs.map((doc) => doc.data().date);
 
-  return Array.from(new Set(dates)); // Remove duplicates
+  return Array.from(new Set(dates)).sort((a, b) => b.localeCompare(a)); // Remove duplicates and sort in descending order
 }
 
 export async function getGratitudesForDate(
   userId: string,
   date: string
 ): Promise<string[]> {
-  const startDate = new Date(date);
-  const endDate = new Date(date);
-  endDate.setDate(endDate.getDate() + 1);
+  if (!userId) throw new Error("User must be authenticated to get gratitudes");
 
-  const gratitudesRef = collection(db, "dailyGratitudes");
-  const q = query(
-    gratitudesRef,
-    where("userId", "==", userId),
-    where("createdAt", ">=", startDate),
-    where("createdAt", "<", endDate),
-    orderBy("createdAt", "asc")
-  );
+  const docRef = doc(db, "dailyGratitudes", `${userId}_${date}`);
+  const docSnap = await getDoc(docRef);
 
-  const querySnapshot = await getDocs(q);
-  return querySnapshot.docs.map((doc) => doc.data().text);
+  if (docSnap.exists()) {
+    return (docSnap.data() as GratitudeDocument).gratitudes;
+  }
+  return [];
 }
 
 export async function getGratitudeCountForToday(
   userId: string
 ): Promise<number> {
+  if (!userId)
+    throw new Error("User must be authenticated to get gratitude count");
+
   const gratitudes = await getGratitudesForToday(userId);
   return gratitudes.length;
 }

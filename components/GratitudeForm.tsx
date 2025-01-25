@@ -1,82 +1,55 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { useAuth } from "@/contexts/AuthContext";
-import { getIdToken } from "firebase/auth";
+import { useState } from "react";
+import { useGratitude } from "@/contexts/GratitudeContext";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { useToast } from "@/components/ui/use-toast";
 
-export default function GratitudeForm() {
+export function GratitudeForm() {
   const [gratitude, setGratitude] = useState("");
-  const [count, setCount] = useState(0);
-  const router = useRouter();
-  const { user } = useAuth();
-
-  useEffect(() => {
-    const fetchCount = async () => {
-      if (user) {
-        try {
-          const token = await getIdToken(user);
-          const response = await fetch("/api/gratitudes/count", {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          });
-          if (response.ok) {
-            const { count } = await response.json();
-            setCount(count);
-          }
-        } catch (error) {
-          console.error("Error fetching gratitude count:", error);
-        }
-      }
-    };
-    fetchCount();
-  }, [user]);
+  const { addGratitude, gratitudes } = useGratitude();
+  const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!gratitude.trim() || count >= 10 || !user) return;
-
-    try {
-      const token = await getIdToken(user);
-      const response = await fetch("/api/gratitudes", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ gratitude }),
-      });
-
-      if (response.ok) {
+    if (gratitude.trim()) {
+      try {
+        await addGratitude(gratitude);
         setGratitude("");
-        setCount((prevCount) => prevCount + 1);
-        router.refresh();
-      } else {
-        console.error("Failed to add gratitude");
+        toast({
+          title: "Gratitude added",
+          description: "Your gratitude has been successfully added.",
+        });
+      } catch (error) {
+        console.error("Error adding gratitude:", error);
+        toast({
+          title: "Error",
+          description:
+            "There was an error adding your gratitude. Please try again.",
+          variant: "destructive",
+        });
       }
-    } catch (error) {
-      console.error("Error adding gratitude:", error);
     }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="mb-4">
-      <input
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <Input
         type="text"
         value={gratitude}
         onChange={(e) => setGratitude(e.target.value)}
         placeholder="Enter something you're grateful for..."
-        className="w-full p-2 border border-gray-300 rounded"
-        disabled={count >= 10 || !user}
+        maxLength={100}
       />
-      <button
-        type="submit"
-        className="mt-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-400"
-        disabled={count >= 10 || !user}
-      >
-        Add Gratitude ({count}/10)
-      </button>
+      <Button type="submit" disabled={gratitudes.length >= 10}>
+        Add Gratitude
+      </Button>
+      {gratitudes.length >= 10 && (
+        <p className="text-sm text-red-500">
+          You've reached the maximum of 10 gratitudes for today.
+        </p>
+      )}
     </form>
   );
 }

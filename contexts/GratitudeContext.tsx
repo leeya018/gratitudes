@@ -1,13 +1,6 @@
 "use client";
-
 import type React from "react";
-import {
-  createContext,
-  useContext,
-  useState,
-  useEffect,
-  useCallback,
-} from "react";
+import { createContext, useContext, useState, useEffect } from "react";
 import { useAuth } from "./AuthContext";
 import {
   getGratitudesForToday,
@@ -16,6 +9,7 @@ import {
 
 interface GratitudeContextType {
   gratitudes: string[];
+  setGratitudes: React.Dispatch<React.SetStateAction<string[]>>;
   addGratitude: (gratitude: string) => Promise<void>;
   loading: boolean;
 }
@@ -39,41 +33,40 @@ export const GratitudeProvider: React.FC<{ children: React.ReactNode }> = ({
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
 
-  const fetchGratitudes = useCallback(async () => {
-    if (user) {
-      setLoading(true);
-      try {
-        const fetchedGratitudes = await getGratitudesForToday(user.uid);
-        setGratitudes(fetchedGratitudes);
-      } catch (error) {
-        console.error("Error fetching gratitudes:", error);
-      } finally {
-        setLoading(false);
+  useEffect(() => {
+    const fetchGratitudes = async () => {
+      if (user) {
+        setLoading(true);
+        try {
+          const fetchedGratitudes = await getGratitudesForToday(user.uid);
+          setGratitudes(fetchedGratitudes);
+        } catch (error) {
+          console.error("Error fetching gratitudes:", error);
+        } finally {
+          setLoading(false);
+        }
       }
-    }
+    };
+
+    fetchGratitudes();
   }, [user]);
 
-  useEffect(() => {
-    fetchGratitudes();
-  }, [fetchGratitudes]);
-
   const addGratitude = async (gratitude: string) => {
-    if (!user) throw new Error("User must be authenticated to add a gratitude");
-
-    setLoading(true);
-    try {
-      await addGratitudeToFirestore(user.uid, gratitude);
-      setGratitudes((prev) => [gratitude, ...prev]);
-    } catch (error) {
-      console.error("Error adding gratitude:", error);
-      throw error;
-    } finally {
-      setLoading(false);
+    if (user) {
+      try {
+        await addGratitudeToFirestore(user.uid, gratitude);
+        setGratitudes((prevGratitudes) => [gratitude, ...prevGratitudes]);
+      } catch (error) {
+        console.error("Error adding gratitude:", error);
+        throw error;
+      }
     }
   };
 
   return (
-    <GratitudeContext.Provider value={{ gratitudes, addGratitude, loading }}>
+    <GratitudeContext.Provider
+      value={{ gratitudes, setGratitudes, addGratitude, loading }}
+    >
       {children}
     </GratitudeContext.Provider>
   );
