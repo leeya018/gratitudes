@@ -21,7 +21,7 @@ export default function GratitudeForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!gratitude.trim() || count >= 20) return;
+    if (!gratitude.trim() || count >= 10) return;
 
     const response = await fetch("/api/gratitudes", {
       method: "POST",
@@ -46,14 +46,14 @@ export default function GratitudeForm() {
         onChange={(e) => setGratitude(e.target.value)}
         placeholder="Enter something you're grateful for..."
         className="w-full p-2 border border-gray-300 rounded"
-        disabled={count >= 20}
+        disabled={count >= 10}
       />
       <button
         type="submit"
         className="mt-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-400"
-        disabled={count >= 20}
+        disabled={count >= 10}
       >
-        Add Gratitude ({count}/20)
+        Add Gratitude ({count}/10)
       </button>
     </form>
   );
