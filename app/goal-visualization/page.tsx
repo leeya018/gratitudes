@@ -42,6 +42,7 @@ export default function GoalVisualization() {
   const [youtubeUrl, setYoutubeUrl] = useState("");
   const [isYoutubeAudioPlaying, setIsYoutubeAudioPlaying] = useState(false);
   const [youtubeVolume, setYoutubeVolume] = useState(100);
+  const [isRecordingSupported, setIsRecordingSupported] = useState(false); // Added state for recording support
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const audioRef = useRef<HTMLAudioElement[]>([]);
@@ -131,6 +132,9 @@ export default function GoalVisualization() {
       setIsRecording(true);
     } catch (err) {
       console.error("Error accessing the microphone", err);
+      alert(
+        "Unable to access the microphone. Please ensure you've granted the necessary permissions and are using a compatible browser."
+      );
     }
   };
 
@@ -322,6 +326,14 @@ export default function GoalVisualization() {
   const handleVolumeChange = (value: number[]) => {
     setYoutubeVolume(value[0]);
   };
+
+  const checkRecordingSupport = () => {
+    return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+  };
+
+  useEffect(() => {
+    setIsRecordingSupported(checkRecordingSupport());
+  }, []);
 
   return (
     <div className="container mx-auto p-4">
@@ -524,21 +536,29 @@ export default function GoalVisualization() {
       {sentences.length > 0 && !sentences[sentences.length - 1].audioData && (
         <div className="mt-4">
           <h3 className="text-xl font-bold mb-2">Record Your Sentence</h3>
-          {!isRecording && !audioData && (
-            <button
-              onClick={startRecording}
-              className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
-            >
-              Start Recording
-            </button>
-          )}
-          {isRecording && (
-            <button
-              onClick={stopRecording}
-              className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
-            >
-              Stop Recording
-            </button>
+          {checkRecordingSupport() ? (
+            <>
+              {!isRecording && !audioData && (
+                <button
+                  onClick={startRecording}
+                  className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
+                >
+                  Start Recording
+                </button>
+              )}
+              {isRecording && (
+                <button
+                  onClick={stopRecording}
+                  className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
+                >
+                  Stop Recording
+                </button>
+              )}
+            </>
+          ) : (
+            <p className="text-red-500">
+              Recording is not supported on your device or browser.
+            </p>
           )}
           {audioData && (
             <div>
