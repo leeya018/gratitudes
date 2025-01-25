@@ -14,7 +14,12 @@ import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Trash2, Volume2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { addSentence, getSentences, deleteSentence } from "../utils/sentences";
+import {
+  addSentence,
+  getSentences,
+  deleteSentence,
+  updateSentence,
+} from "../utils/sentences";
 import type { SentenceRecord } from "../types/sentences";
 
 interface SentenceRecord {
@@ -200,7 +205,10 @@ export default function GoalVisualization() {
 
     const lastSentence = sentences[0]; // First sentence is the most recent
     try {
-      await addSentence(user.uid, lastSentence.text, audioData);
+      // Update the sentence in Firestore
+      await updateSentence(lastSentence.id, { audioData });
+
+      // Update the local state
       const updatedSentences = sentences.map((sentence, index) =>
         index === 0 ? { ...sentence, audioData } : sentence
       );

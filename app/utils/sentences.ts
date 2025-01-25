@@ -8,6 +8,7 @@ import {
   deleteDoc,
   doc,
   Timestamp,
+  updateDoc,
 } from "firebase/firestore";
 import type { SentenceRecord } from "../types/sentences";
 
@@ -62,5 +63,18 @@ export async function deleteSentence(sentenceId: string): Promise<void> {
   } catch (error) {
     console.error("Error deleting sentence:", error);
     throw new Error("Failed to delete sentence");
+  }
+}
+
+export async function updateSentence(
+  sentenceId: string,
+  updateData: Partial<SentenceRecord>
+): Promise<void> {
+  try {
+    const sentenceRef = doc(db, "sentences", sentenceId);
+    await updateDoc(sentenceRef, updateData);
+  } catch (error) {
+    console.error("Error updating sentence:", error);
+    throw new Error("Failed to update sentence");
   }
 }
