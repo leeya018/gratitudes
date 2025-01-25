@@ -5,7 +5,7 @@ import { useGratitude } from "@/contexts/GratitudeContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/use-toast";
-
+//@typescript-eslint/no-empty-object-type
 export function GratitudeForm() {
   const [gratitude, setGratitude] = useState("");
   const { addGratitude, gratitudes } = useGratitude();
@@ -47,7 +47,7 @@ export function GratitudeForm() {
       </Button>
       {gratitudes.length >= 10 && (
         <p className="text-sm text-red-500">
-          You've reached the maximum of 10 gratitudes for today.
+          You have reached the maximum of 10 gratitudes for today.
         </p>
       )}
     </form>
