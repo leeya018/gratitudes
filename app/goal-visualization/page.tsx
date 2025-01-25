@@ -350,8 +350,9 @@ export default function GoalVisualization() {
             type="text"
             id="target"
             value={target}
+            placeholder="exmple: I am making 10K dollars a month"
             onChange={(e) => setTarget(e.target.value)}
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+            className="mt-1 block w-full px-4 py-2 text-xl border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
             required
           />
         </div>
@@ -366,8 +367,9 @@ export default function GoalVisualization() {
             type="text"
             id="emotions"
             value={emotions}
+            placeholder="exmple: happy and joy"
             onChange={(e) => setEmotions(e.target.value)}
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+            className="mt-1 block w-full px-4 py-2 text-xl border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
             required
           />
         </div>
@@ -381,15 +383,16 @@ export default function GoalVisualization() {
           <input
             type="text"
             id="characters"
+            placeholder="exmple: passionate and creative"
             value={characters}
             onChange={(e) => setCharacters(e.target.value)}
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+            className="mt-1 block w-full px-4 py-2 text-xl border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
             required
           />
         </div>
         <button
           type="submit"
-          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+          className="px-6 py-3 text-xl bg-blue-500 text-white rounded-md hover:bg-blue-600 transition duration-300"
         >
           Generate Sentence
         </button>

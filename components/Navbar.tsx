@@ -44,7 +44,7 @@ const Navbar = () => {
           </li>
           <li>
             <Link href="/home" className="text-white hover:text-blue-200">
-              All Entries
+              All Gratitudes
             </Link>
           </li>
           {user ? (
