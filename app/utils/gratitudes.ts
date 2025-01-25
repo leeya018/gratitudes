@@ -20,7 +20,7 @@ interface GratitudeDocument {
 }
 
 export async function getGratitudesForToday(userId: string): Promise<string[]> {
-  if (!userId) return [];
+  if (!userId) throw new Error("User must be authenticated to get gratitudes");
 
   const today = new Date().toISOString().split("T")[0];
   const docRef = doc(db, "dailyGratitudes", `${userId}_${today}`);
@@ -62,7 +62,7 @@ export async function addGratitude(
 }
 
 export async function getAllDates(userId: string): Promise<string[]> {
-  if (!userId) return [];
+  if (!userId) throw new Error("User must be authenticated to get dates");
 
   const q = query(
     collection(db, "dailyGratitudes"),
@@ -70,14 +70,14 @@ export async function getAllDates(userId: string): Promise<string[]> {
   );
   const querySnapshot = await getDocs(q);
   const dates = querySnapshot.docs.map((doc) => doc.data().date);
-  return [...new Set(dates)].sort().reverse(); // Remove duplicates and sort in descending order
+  return Array.from(new Set(dates)).sort((a, b) => b.localeCompare(a)); // Remove duplicates and sort in descending order
 }
 
 export async function getGratitudesForDate(
   userId: string,
   date: string
 ): Promise<string[]> {
-  if (!userId) return [];
+  if (!userId) throw new Error("User must be authenticated to get gratitudes");
 
   const docRef = doc(db, "dailyGratitudes", `${userId}_${date}`);
   const docSnap = await getDoc(docRef);
@@ -91,6 +91,9 @@ export async function getGratitudesForDate(
 export async function getGratitudeCountForToday(
   userId: string
 ): Promise<number> {
+  if (!userId)
+    throw new Error("User must be authenticated to get gratitude count");
+
   const gratitudes = await getGratitudesForToday(userId);
   return gratitudes.length;
 }

@@ -53,7 +53,7 @@ export async function getAllDates(userId: string): Promise<string[]> {
     return date.toISOString().split("T")[0];
   });
 
-  return [...new Set(dates)]; // Remove duplicates
+  return Array.from(new Set(dates)); // Remove duplicates
 }
 
 export async function getGratitudesForDate(

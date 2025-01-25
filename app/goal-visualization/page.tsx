@@ -22,14 +22,6 @@ import {
 } from "../utils/sentences";
 import type { SentenceRecord } from "../types/sentences";
 
-interface SentenceRecord {
-  id: string;
-  text: string;
-  audioData?: string;
-  userId?: string;
-  createdAt?: Date;
-}
-
 type RepeatDuration = "none" | "10min" | "30min" | "1hour" | "forever";
 
 export default function GoalVisualization() {
@@ -52,7 +44,7 @@ export default function GoalVisualization() {
   const [youtubeUrl, setYoutubeUrl] = useState("");
   const [isYoutubeAudioPlaying, setIsYoutubeAudioPlaying] = useState(false);
   const [youtubeVolume, setYoutubeVolume] = useState(100);
-  const [isRecordingSupported, setIsRecordingSupported] = useState(false);
+  // const [isRecordingSupported, setIsRecordingSupported] = useState(false);
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -370,13 +362,13 @@ export default function GoalVisualization() {
     setYoutubeVolume(value[0]);
   };
 
+  // useEffect(() => {
+  //   setIsRecordingSupported(checkRecordingSupport());
+  // }, []);
+
   const checkRecordingSupport = () => {
     return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
   };
-
-  useEffect(() => {
-    setIsRecordingSupported(checkRecordingSupport());
-  }, []);
 
   if (!user) {
     return (
@@ -670,7 +662,7 @@ export default function GoalVisualization() {
         </div>
       ) : (
         <p className="mt-8 text-center text-gray-600">
-          You haven't created any sentences yet. Start by generating a new
+          You havent created any sentences yet. Start by generating a new
           sentence above!
         </p>
       )}
