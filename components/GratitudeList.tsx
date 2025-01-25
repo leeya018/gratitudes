@@ -1,7 +1,26 @@
-import { getGratitudesForToday } from "../utils/gratitudes";
+"use client";
 
-export default async function GratitudeList() {
-  const gratitudes = await getGratitudesForToday();
+import { useEffect, useState } from "react";
+import { getGratitudesForToday } from "@/app/utils/gratitudes";
+import { useAuth } from "@/contexts/AuthContext";
+
+export default function GratitudeList() {
+  const [gratitudes, setGratitudes] = useState<string[]>([]);
+  const { user } = useAuth();
+
+  useEffect(() => {
+    const fetchGratitudes = async () => {
+      if (user) {
+        const fetchedGratitudes = await getGratitudesForToday(user.uid);
+        setGratitudes(fetchedGratitudes);
+      }
+    };
+    fetchGratitudes();
+  }, [user]);
+
+  if (!user) {
+    return <p>Please log in to view gratitudes.</p>;
+  }
 
   return (
     <div className="bg-white p-4 rounded-lg shadow">

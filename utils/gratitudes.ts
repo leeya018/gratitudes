@@ -1,59 +1,85 @@
-import fs from "fs/promises";
-import path from "path";
+import { db } from "@/lib/firebase";
+import {
+  collection,
+  addDoc,
+  query,
+  where,
+  getDocs,
+  orderBy,
+  Timestamp,
+} from "firebase/firestore";
 
-const GRATITUDES_DIR = path.join(process.cwd(), "gratitudes");
+export async function getGratitudesForToday(userId: string): Promise<string[]> {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
 
-export async function getGratitudesForToday(): Promise<string[]> {
-  const today = new Date().toISOString().split("T")[0];
-  const filePath = path.join(GRATITUDES_DIR, `${today}.json`);
+  const gratitudesRef = collection(db, "dailyGratitudes");
+  const q = query(
+    gratitudesRef,
+    where("userId", "==", userId),
+    where("createdAt", ">=", today),
+    where("createdAt", "<", tomorrow),
+    orderBy("createdAt", "desc")
+  );
 
-  try {
-    const data = await fs.readFile(filePath, "utf-8");
-    return JSON.parse(data);
-  } catch (error) {
-    return [];
-  }
+  const querySnapshot = await getDocs(q);
+  return querySnapshot.docs.map((doc) => doc.data().text);
 }
 
-export async function addGratitude(gratitude: string): Promise<void> {
-  const today = new Date().toISOString().split("T")[0];
-  const filePath = path.join(GRATITUDES_DIR, `${today}.json`);
-
-  let gratitudes: string[] = [];
-
-  try {
-    const data = await fs.readFile(filePath, "utf-8");
-    gratitudes = JSON.parse(data);
-  } catch (error) {
-    // File doesn't exist yet, that's okay
-  }
-
-  gratitudes.push(gratitude);
-
-  await fs.mkdir(GRATITUDES_DIR, { recursive: true });
-  await fs.writeFile(filePath, JSON.stringify(gratitudes, null, 2));
+export async function addGratitude(
+  userId: string,
+  gratitude: string
+): Promise<void> {
+  await addDoc(collection(db, "dailyGratitudes"), {
+    userId,
+    text: gratitude,
+    createdAt: Timestamp.now(),
+  });
 }
 
-export async function getAllDates(): Promise<string[]> {
-  const files = await fs.readdir(GRATITUDES_DIR);
-  return files
-    .map((file) => file.replace(".json", ""))
-    .sort()
-    .reverse();
+export async function getAllDates(userId: string): Promise<string[]> {
+  const gratitudesRef = collection(db, "dailyGratitudes");
+  const q = query(
+    gratitudesRef,
+    where("userId", "==", userId),
+    orderBy("createdAt", "desc")
+  );
+
+  const querySnapshot = await getDocs(q);
+  const dates = querySnapshot.docs.map((doc) => {
+    const date = doc.data().createdAt.toDate();
+    return date.toISOString().split("T")[0];
+  });
+
+  return [...new Set(dates)]; // Remove duplicates
 }
 
-export async function getGratitudesForDate(date: string): Promise<string[]> {
-  const filePath = path.join(GRATITUDES_DIR, `${date}.json`);
+export async function getGratitudesForDate(
+  userId: string,
+  date: string
+): Promise<string[]> {
+  const startDate = new Date(date);
+  const endDate = new Date(date);
+  endDate.setDate(endDate.getDate() + 1);
 
-  try {
-    const data = await fs.readFile(filePath, "utf-8");
-    return JSON.parse(data);
-  } catch (error) {
-    return [];
-  }
+  const gratitudesRef = collection(db, "dailyGratitudes");
+  const q = query(
+    gratitudesRef,
+    where("userId", "==", userId),
+    where("createdAt", ">=", startDate),
+    where("createdAt", "<", endDate),
+    orderBy("createdAt", "asc")
+  );
+
+  const querySnapshot = await getDocs(q);
+  return querySnapshot.docs.map((doc) => doc.data().text);
 }
 
-export async function getGratitudeCountForToday(): Promise<number> {
-  const gratitudes = await getGratitudesForToday();
+export async function getGratitudeCountForToday(
+  userId: string
+): Promise<number> {
+  const gratitudes = await getGratitudesForToday(userId);
   return gratitudes.length;
 }

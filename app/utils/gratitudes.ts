@@ -1,64 +1,96 @@
-import fs from "fs/promises";
-import path from "path";
+import { db } from "@/lib/firebase";
+import {
+  doc,
+  setDoc,
+  getDoc,
+  updateDoc,
+  arrayUnion,
+  Timestamp,
+  query,
+  where,
+  getDocs,
+  collection,
+} from "firebase/firestore";
 
-const GRATITUDES_DIR = path.join(process.cwd(), "gratitudes");
+interface GratitudeDocument {
+  userId: string;
+  date: string;
+  gratitudes: string[];
+  lastUpdated: Timestamp;
+}
 
-export async function getGratitudesForToday(): Promise<string[]> {
+export async function getGratitudesForToday(userId: string): Promise<string[]> {
+  if (!userId) return [];
+
   const today = new Date().toISOString().split("T")[0];
-  const filePath = path.join(GRATITUDES_DIR, `${today}.json`);
+  const docRef = doc(db, "dailyGratitudes", `${userId}_${today}`);
+  const docSnap = await getDoc(docRef);
 
-  try {
-    const data = await fs.readFile(filePath, "utf-8");
-    return JSON.parse(data);
-  } catch (error) {
-    console.log(error);
-    return [];
+  if (docSnap.exists()) {
+    return (docSnap.data() as GratitudeDocument).gratitudes;
   }
+  return [];
 }
 
-export async function addGratitude(gratitude: string): Promise<void> {
+export async function addGratitude(
+  userId: string,
+  gratitude: string
+): Promise<void> {
+  if (!userId) throw new Error("User must be authenticated to add a gratitude");
+
   const today = new Date().toISOString().split("T")[0];
-  const filePath = path.join(GRATITUDES_DIR, `${today}.json`);
+  const docRef = doc(db, "dailyGratitudes", `${userId}_${today}`);
+  const docSnap = await getDoc(docRef);
 
-  let gratitudes: string[] = [];
-
-  try {
-    const data = await fs.readFile(filePath, "utf-8");
-    gratitudes = JSON.parse(data);
-  } catch (error) {
-    console.log(error);
-
-    // File doesn't exist yet, that's okay
-  }
-
-  gratitudes.push(gratitude);
-
-  await fs.mkdir(GRATITUDES_DIR, { recursive: true });
-  await fs.writeFile(filePath, JSON.stringify(gratitudes, null, 2));
-}
-
-export async function getAllDates(): Promise<string[]> {
-  const files = await fs.readdir(GRATITUDES_DIR);
-  return files
-    .map((file) => file.replace(".json", ""))
-    .sort()
-    .reverse();
-}
-
-export async function getGratitudesForDate(date: string): Promise<string[]> {
-  const filePath = path.join(GRATITUDES_DIR, `${date}.json`);
-
-  try {
-    const data = await fs.readFile(filePath, "utf-8");
-    return JSON.parse(data);
-  } catch (error) {
-    console.log(error);
-
-    return [];
+  if (docSnap.exists()) {
+    const data = docSnap.data() as GratitudeDocument;
+    if (data.gratitudes.length >= 10) {
+      throw new Error("Maximum of 10 gratitudes per day reached");
+    }
+    await updateDoc(docRef, {
+      gratitudes: arrayUnion(gratitude),
+      lastUpdated: Timestamp.now(),
+    });
+  } else {
+    await setDoc(docRef, {
+      userId,
+      date: today,
+      gratitudes: [gratitude],
+      lastUpdated: Timestamp.now(),
+    });
   }
 }
 
-export async function getGratitudeCountForToday(): Promise<number> {
-  const gratitudes = await getGratitudesForToday();
+export async function getAllDates(userId: string): Promise<string[]> {
+  if (!userId) return [];
+
+  const q = query(
+    collection(db, "dailyGratitudes"),
+    where("userId", "==", userId)
+  );
+  const querySnapshot = await getDocs(q);
+  const dates = querySnapshot.docs.map((doc) => doc.data().date);
+  return [...new Set(dates)].sort().reverse(); // Remove duplicates and sort in descending order
+}
+
+export async function getGratitudesForDate(
+  userId: string,
+  date: string
+): Promise<string[]> {
+  if (!userId) return [];
+
+  const docRef = doc(db, "dailyGratitudes", `${userId}_${date}`);
+  const docSnap = await getDoc(docRef);
+
+  if (docSnap.exists()) {
+    return (docSnap.data() as GratitudeDocument).gratitudes;
+  }
+  return [];
+}
+
+export async function getGratitudeCountForToday(
+  userId: string
+): Promise<number> {
+  const gratitudes = await getGratitudesForToday(userId);
   return gratitudes.length;
 }
