@@ -10,6 +10,7 @@ import {
   doc,
   deleteDoc,
   Timestamp,
+  type FieldValue,
 } from "firebase/firestore";
 import type { SentenceRecord } from "../types/sentences";
 
@@ -24,7 +25,7 @@ export async function addSentence(
     const sentenceData: SentenceRecord = {
       userId,
       text,
-      createdAt: serverTimestamp(),
+      createdAt: serverTimestamp() as FieldValue,
       audioData: audioData || null,
     };
 
@@ -52,6 +53,8 @@ export async function getSentences(userId: string): Promise<SentenceRecord[]> {
         createdAt:
           data.createdAt instanceof Timestamp
             ? data.createdAt.toDate()
+            : data.createdAt instanceof Date
+            ? data.createdAt
             : new Date(data.createdAt),
       } as SentenceRecord;
     });

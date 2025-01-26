@@ -21,6 +21,7 @@ import {
   updateSentence,
 } from "../utils/sentences";
 import type { SentenceRecord } from "../types/sentences";
+import { Timestamp, type FieldValue } from "firebase/firestore";
 
 type RepeatDuration = "none" | "10min" | "30min" | "1hour" | "forever";
 
@@ -44,7 +45,7 @@ export default function GoalVisualization() {
   const [youtubeUrl, setYoutubeUrl] = useState("");
   const [isYoutubeAudioPlaying, setIsYoutubeAudioPlaying] = useState(false);
   const [youtubeVolume, setYoutubeVolume] = useState(100);
-  const [isRecordingSupported, setIsRecordingSupported] = useState(false);
+  // const [isRecordingSupported, setIsRecordingSupported] = useState(false);
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -93,15 +94,15 @@ export default function GoalVisualization() {
           const fetchedSentences = await getSentences(user.uid);
           setSentences(
             fetchedSentences.sort((a, b) => {
-              // Ensure both a.createdAt and b.createdAt are Date objects
-              const dateA =
-                a.createdAt instanceof Date
-                  ? a.createdAt
-                  : new Date(a.createdAt);
-              const dateB =
-                b.createdAt instanceof Date
-                  ? b.createdAt
-                  : new Date(b.createdAt);
+              const getDate = (createdAt: Date | Timestamp | FieldValue) => {
+                if (createdAt instanceof Date) return createdAt;
+                if (createdAt instanceof Timestamp) return createdAt.toDate();
+                // If it's a FieldValue (serverTimestamp), we can't compare it directly
+                // So we'll treat it as the most recent date
+                return new Date();
+              };
+              const dateA = getDate(a.createdAt);
+              const dateB = getDate(b.createdAt);
               return dateB.getTime() - dateA.getTime();
             })
           );
@@ -147,6 +148,7 @@ export default function GoalVisualization() {
         text,
         userId: user.uid,
         createdAt: new Date(),
+        audioData: null, // Initialize audioData as null for new sentences
       };
       setSentences((prev) => [newSentence, ...prev]);
       setTarget("");
@@ -204,12 +206,10 @@ export default function GoalVisualization() {
   const attachAudioToLastSentence = async () => {
     if (!audioData || !user || sentences.length === 0) return;
 
-    const lastSentence = sentences[0]; // First sentence is the most recent
+    const lastSentence = sentences[0];
     try {
-      // Update the sentence in Firestore
+      if (!lastSentence.id) throw "no id for sentence";
       await updateSentence(lastSentence.id, { audioData });
-
-      // Update the local state
       const updatedSentences = sentences.map((sentence, index) =>
         index === 0 ? { ...sentence, audioData } : sentence
       );
@@ -375,9 +375,9 @@ export default function GoalVisualization() {
     return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
   };
 
-  useEffect(() => {
-    setIsRecordingSupported(checkRecordingSupport());
-  }, []);
+  // useEffect(() => {
+  //   setIsRecordingSupported(checkRecordingSupport());
+  // }, []);
 
   if (!user) {
     return (
@@ -538,7 +538,11 @@ export default function GoalVisualization() {
                 <div className="flex justify-between items-start">
                   <p>{sentence.text}</p>
                   <button
-                    onClick={() => handleDeleteClick(sentence.id)}
+                    onClick={() => {
+                      if (sentence.id) {
+                        handleDeleteClick(sentence.id);
+                      }
+                    }}
                     className="text-red-500 hover:text-red-700"
                     aria-label="Delete sentence"
                   >
@@ -671,7 +675,7 @@ export default function GoalVisualization() {
         </div>
       ) : (
         <p className="mt-8 text-center text-gray-600">
-          You haven't created any sentences yet. Start by generating a new
+          You have not created any sentences yet. Start by generating a new
           sentence above!
         </p>
       )}

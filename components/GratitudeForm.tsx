@@ -48,7 +48,7 @@ export function GratitudeForm() {
       </Button>
       {isComplete && (
         <p className="text-sm text-green-500">
-          You've completed all 10 gratitudes for today!
+          Youve completed all 10 gratitudes for today!
         </p>
       )}
     </form>
