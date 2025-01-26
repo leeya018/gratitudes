@@ -1,13 +1,21 @@
+"use client";
+
+import React from "react";
+import { useGratitude } from "@/contexts/GratitudeContext";
+
 export default function CompletionMessage() {
+  const { isComplete } = useGratitude();
+
+  if (!isComplete) {
+    return null;
+  }
+
   return (
-    <div
-      className="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 mt-4"
-      role="alert"
-    >
-      <p className="font-bold">Congratulations!</p>
+    <div className="mt-8 p-4 bg-green-100 border border-green-400 text-green-700 rounded">
+      <h2 className="text-2xl font-bold mb-2">Congratulations!</h2>
       <p>
-        You have completed your 10 gratitudes for today. Keep up the positive
-        mindset!
+        You've completed your gratitude journal for today. Great job focusing on
+        the positive aspects of your life!
       </p>
     </div>
   );

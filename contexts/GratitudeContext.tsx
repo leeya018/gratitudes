@@ -1,6 +1,6 @@
+// import type  from "react";
 "use client";
-import type React from "react";
-import { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState, useEffect } from "react";
 import { useAuth } from "./AuthContext";
 import {
   getGratitudesForToday,
@@ -12,6 +12,7 @@ interface GratitudeContextType {
   setGratitudes: React.Dispatch<React.SetStateAction<string[]>>;
   addGratitude: (gratitude: string) => Promise<void>;
   loading: boolean;
+  isComplete: boolean;
 }
 
 const GratitudeContext = createContext<GratitudeContextType | undefined>(
@@ -32,6 +33,8 @@ export const GratitudeProvider: React.FC<{ children: React.ReactNode }> = ({
   const [gratitudes, setGratitudes] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
+
+  const isComplete = gratitudes.length >= 10;
 
   useEffect(() => {
     const fetchGratitudes = async () => {
@@ -65,7 +68,7 @@ export const GratitudeProvider: React.FC<{ children: React.ReactNode }> = ({
 
   return (
     <GratitudeContext.Provider
-      value={{ gratitudes, setGratitudes, addGratitude, loading }}
+      value={{ gratitudes, setGratitudes, addGratitude, loading, isComplete }}
     >
       {children}
     </GratitudeContext.Provider>

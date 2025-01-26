@@ -1,3 +1,4 @@
+import React from "react";
 import { GratitudeForm } from "@/components/GratitudeForm";
 import { GratitudeList } from "@/components/GratitudeList";
 import CompletionMessage from "@/components/CompletionMessage";

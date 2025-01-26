@@ -1,14 +1,15 @@
 "use client";
 
+import type React from "react";
 import { useState } from "react";
 import { useGratitude } from "@/contexts/GratitudeContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/use-toast";
-//@typescript-eslint/no-empty-object-type
+
 export function GratitudeForm() {
   const [gratitude, setGratitude] = useState("");
-  const { addGratitude, gratitudes } = useGratitude();
+  const { addGratitude, gratitudes, isComplete } = useGratitude();
   const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -42,12 +43,12 @@ export function GratitudeForm() {
         placeholder="Enter something you're grateful for..."
         maxLength={100}
       />
-      <Button type="submit" disabled={gratitudes.length >= 10}>
-        Add Gratitude
+      <Button type="submit" disabled={isComplete}>
+        Add Gratitude ({gratitudes.length}/10)
       </Button>
-      {gratitudes.length >= 10 && (
-        <p className="text-sm text-red-500">
-          You have reached the maximum of 10 gratitudes for today.
+      {isComplete && (
+        <p className="text-sm text-green-500">
+          You've completed all 10 gratitudes for today!
         </p>
       )}
     </form>
