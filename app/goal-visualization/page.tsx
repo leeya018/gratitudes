@@ -645,7 +645,7 @@ export default function GoalVisualization() {
         href="/"
         className="text-blue-500 hover:underline mt-8 inline-block"
       >
-        Back to Gratitude Journal
+        Back to Manifest Journal
       </Link>
 
       <Dialog open={deleteModalOpen} onOpenChange={setDeleteModalOpen}>

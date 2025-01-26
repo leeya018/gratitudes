@@ -6,8 +6,8 @@ import LayoutContent from "@/components/LayoutContent";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Gratitude Journal",
-  description: "A simple gratitude journal application",
+  title: "Manifest Journal",
+  description: "A simple manifest journal application",
 };
 
 export default function RootLayout({

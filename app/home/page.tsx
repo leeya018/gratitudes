@@ -20,12 +20,12 @@ export default function Home() {
   }, [user]);
 
   if (!user) {
-    return <p>Please log in to view your gratitude journal entries.</p>;
+    return <p>Please log in to view your manifest journal entries.</p>;
   }
 
   return (
     <div className="container mx-auto p-4">
-      <h1 className="text-3xl font-bold mb-4">Gratitude Journal Entries</h1>
+      <h1 className="text-3xl font-bold mb-4">Manifest Journal Entries</h1>
       {dates.length > 0 ? (
         <ul className="space-y-2">
           {dates.map((date) => (

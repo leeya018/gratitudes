@@ -27,13 +27,13 @@ export default function Login() {
         <div className="text-center">
           <Image
             src="https://images.unsplash.com/photo-1510194638421-92f54ce46444?q=80&w=2135&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
-            alt="Gratitude Journal"
+            alt="Manifest Journal"
             width={300}
             height={200}
             className="mx-auto rounded-lg"
           />
           <h2 className="mt-6 text-3xl font-extrabold text-gray-900">
-            Welcome to Gratitude Journal
+            Welcome to Manifest Journal
           </h2>
           <p className="mt-2 text-sm text-gray-600">
             Sign in to start your journey of gratitude
