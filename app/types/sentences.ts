@@ -1,7 +1,9 @@
+import type { Timestamp } from "firebase/firestore";
+
 export interface SentenceRecord {
   id: string;
-  text: string;
-  audioData?: string;
   userId: string;
-  createdAt: Date;
+  text: string;
+  createdAt: Date | Timestamp;
+  audioData: string | null;
 }

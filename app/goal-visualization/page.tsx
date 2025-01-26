@@ -44,7 +44,7 @@ export default function GoalVisualization() {
   const [youtubeUrl, setYoutubeUrl] = useState("");
   const [isYoutubeAudioPlaying, setIsYoutubeAudioPlaying] = useState(false);
   const [youtubeVolume, setYoutubeVolume] = useState(100);
-  // const [isRecordingSupported, setIsRecordingSupported] = useState(false);
+  const [isRecordingSupported, setIsRecordingSupported] = useState(false);
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -92,9 +92,18 @@ export default function GoalVisualization() {
           setLoading(true);
           const fetchedSentences = await getSentences(user.uid);
           setSentences(
-            fetchedSentences.sort(
-              (a, b) => b.createdAt.getTime() - a.createdAt.getTime()
-            )
+            fetchedSentences.sort((a, b) => {
+              // Ensure both a.createdAt and b.createdAt are Date objects
+              const dateA =
+                a.createdAt instanceof Date
+                  ? a.createdAt
+                  : new Date(a.createdAt);
+              const dateB =
+                b.createdAt instanceof Date
+                  ? b.createdAt
+                  : new Date(b.createdAt);
+              return dateB.getTime() - dateA.getTime();
+            })
           );
         } catch (error) {
           console.error("Error loading sentences:", error);
@@ -362,13 +371,13 @@ export default function GoalVisualization() {
     setYoutubeVolume(value[0]);
   };
 
-  // useEffect(() => {
-  //   setIsRecordingSupported(checkRecordingSupport());
-  // }, []);
-
   const checkRecordingSupport = () => {
     return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
   };
+
+  useEffect(() => {
+    setIsRecordingSupported(checkRecordingSupport());
+  }, []);
 
   if (!user) {
     return (
@@ -662,7 +671,7 @@ export default function GoalVisualization() {
         </div>
       ) : (
         <p className="mt-8 text-center text-gray-600">
-          You havent created any sentences yet. Start by generating a new
+          You haven't created any sentences yet. Start by generating a new
           sentence above!
         </p>
       )}

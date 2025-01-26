@@ -2,13 +2,14 @@ import { db } from "@/lib/firebase";
 import {
   collection,
   addDoc,
+  getDocs,
   query,
   where,
-  getDocs,
-  deleteDoc,
-  doc,
-  Timestamp,
+  serverTimestamp,
   updateDoc,
+  doc,
+  deleteDoc,
+  Timestamp,
 } from "firebase/firestore";
 import type { SentenceRecord } from "../types/sentences";
 
@@ -17,64 +18,68 @@ export async function addSentence(
   text: string,
   audioData?: string
 ): Promise<string> {
+  if (!userId) throw new Error("User must be authenticated to add a sentence");
+
   try {
-    const sentenceData: {
-      userId: string;
-      text: string;
-      audioData?: string;
-      createdAt: Timestamp;
-    } = {
+    const sentenceData: SentenceRecord = {
       userId,
       text,
-      createdAt: Timestamp.now(),
+      createdAt: serverTimestamp(),
+      audioData: audioData || null,
     };
-
-    if (audioData !== undefined) {
-      sentenceData.audioData = audioData;
-    }
 
     const docRef = await addDoc(collection(db, "sentences"), sentenceData);
     return docRef.id;
   } catch (error) {
     console.error("Error adding sentence:", error);
-    throw new Error("Failed to add sentence");
+    throw error;
   }
 }
 
 export async function getSentences(userId: string): Promise<SentenceRecord[]> {
+  if (!userId) throw new Error("User must be authenticated to get sentences");
+
   try {
     const q = query(collection(db, "sentences"), where("userId", "==", userId));
     const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-      createdAt: doc.data().createdAt.toDate(),
-    })) as SentenceRecord[];
+    return querySnapshot.docs.map((doc) => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        userId: data.userId,
+        text: data.text,
+        audioData: data.audioData,
+        createdAt:
+          data.createdAt instanceof Timestamp
+            ? data.createdAt.toDate()
+            : new Date(data.createdAt),
+      } as SentenceRecord;
+    });
   } catch (error) {
     console.error("Error getting sentences:", error);
-    // Instead of throwing an error, return an empty array
-    return [];
-  }
-}
-
-export async function deleteSentence(sentenceId: string): Promise<void> {
-  try {
-    await deleteDoc(doc(db, "sentences", sentenceId));
-  } catch (error) {
-    console.error("Error deleting sentence:", error);
-    throw new Error("Failed to delete sentence");
+    throw error; // Propagate the error instead of returning an empty array
   }
 }
 
 export async function updateSentence(
   sentenceId: string,
-  updateData: Partial<SentenceRecord>
+  updates: Partial<SentenceRecord>
 ): Promise<void> {
   try {
     const sentenceRef = doc(db, "sentences", sentenceId);
-    await updateDoc(sentenceRef, updateData);
+    await updateDoc(sentenceRef, updates);
   } catch (error) {
     console.error("Error updating sentence:", error);
-    throw new Error("Failed to update sentence");
+    throw error;
+  }
+}
+
+export async function deleteSentence(sentenceId: string): Promise<void> {
+  try {
+    const sentenceRef = doc(db, "sentences", sentenceId);
+    await deleteDoc(sentenceRef);
+  } catch (error) {
+    console.error("Error deleting sentence:", error);
+    throw error;
   }
 }

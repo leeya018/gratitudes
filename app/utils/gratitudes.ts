@@ -70,6 +70,7 @@ export async function getAllDates(userId: string): Promise<string[]> {
   );
   const querySnapshot = await getDocs(q);
   const dates = querySnapshot.docs.map((doc) => doc.data().date);
+
   return Array.from(new Set(dates)).sort((a, b) => b.localeCompare(a)); // Remove duplicates and sort in descending order
 }
 
