@@ -45,8 +45,10 @@ export default function GoalVisualization() {
   const [youtubeUrl, setYoutubeUrl] = useState("");
   const [isYoutubeAudioPlaying, setIsYoutubeAudioPlaying] = useState(false);
   const [youtubeVolume, setYoutubeVolume] = useState(100);
-  // const [isRecordingSupported, setIsRecordingSupported] = useState(false);
+  const [isRecordingSupported, setIsRecordingSupported] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [isYoutubePlayerReady, setIsYoutubePlayerReady] = useState(false);
+  const [isYoutubeLoading, setIsYoutubeLoading] = useState(false); // Added loading state for YouTube player
   const { user } = useAuth();
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -60,23 +62,14 @@ export default function GoalVisualization() {
       tag.src = "https://www.youtube.com/iframe_api";
       const firstScriptTag = document.getElementsByTagName("script")[0];
       firstScriptTag.parentNode?.insertBefore(tag, firstScriptTag);
-    }
 
-    window.onYouTubeIframeAPIReady = () => {
-      youtubePlayerRef.current = new YT.Player("youtube-player", {
-        height: "0",
-        width: "0",
-        videoId: "",
-        playerVars: {
-          playsinline: 1,
-          controls: 0,
-          disablekb: 1,
-        },
-        events: {
-          onStateChange: onPlayerStateChange,
-        },
-      });
-    };
+      window.onYouTubeIframeAPIReady = () => {
+        console.log("YouTube API is ready");
+        initializeYouTubePlayer();
+      };
+    } else {
+      initializeYouTubePlayer();
+    }
 
     return () => {
       if (repeatIntervalRef.current) {
@@ -84,6 +77,55 @@ export default function GoalVisualization() {
       }
     };
   }, []);
+
+  const initializeYouTubePlayer = () => {
+    if (window.YT && window.YT.Player) {
+      youtubePlayerRef.current = new window.YT.Player("youtube-player", {
+        height: "1",
+        width: "1",
+        videoId: "",
+        playerVars: {
+          playsinline: 1,
+          controls: 0,
+          disablekb: 1,
+          fs: 0,
+        },
+        events: {
+          onReady: onPlayerReady,
+          onStateChange: onPlayerStateChange,
+        },
+      });
+    } else {
+      console.error("YouTube API is not loaded yet");
+      setTimeout(initializeYouTubePlayer, 100); // Retry after 100ms
+    }
+  };
+
+  const onPlayerReady = (event: YT.PlayerEvent) => {
+    console.log("YouTube player is ready");
+    setIsYoutubePlayerReady(true);
+  };
+
+  const onPlayerStateChange = (event: YT.OnStateChangeEvent) => {
+    if (event.data === YT.PlayerState.PLAYING) {
+      setIsYoutubeAudioPlaying(true);
+    } else if (
+      event.data === YT.PlayerState.PAUSED ||
+      event.data === YT.PlayerState.ENDED
+    ) {
+      setIsYoutubeAudioPlaying(false);
+    } else if (event.data === YT.PlayerState.UNSTARTED) {
+      console.error("YouTube video failed to start");
+      setIsYoutubeLoading(false);
+      setIsYoutubeAudioPlaying(false);
+    }
+  };
+
+  useEffect(() => {
+    if (youtubePlayerRef.current && isYoutubePlayerReady) {
+      youtubePlayerRef.current.setVolume(youtubeVolume);
+    }
+  }, [youtubeVolume, isYoutubePlayerReady]);
 
   // Load sentences from Firestore when user is available
   useEffect(() => {
@@ -97,8 +139,6 @@ export default function GoalVisualization() {
               const getDate = (createdAt: Date | Timestamp | FieldValue) => {
                 if (createdAt instanceof Date) return createdAt;
                 if (createdAt instanceof Timestamp) return createdAt.toDate();
-                // If it's a FieldValue (serverTimestamp), we can't compare it directly
-                // So we'll treat it as the most recent date
                 return new Date();
               };
               const dateA = getDate(a.createdAt);
@@ -108,7 +148,6 @@ export default function GoalVisualization() {
           );
         } catch (error) {
           console.error("Error loading sentences:", error);
-          // Set sentences to an empty array if there's an error
           setSentences([]);
         } finally {
           setLoading(false);
@@ -117,23 +156,6 @@ export default function GoalVisualization() {
     };
     loadSentences();
   }, [user]);
-
-  useEffect(() => {
-    if (youtubePlayerRef.current) {
-      youtubePlayerRef.current.setVolume(youtubeVolume);
-    }
-  }, [youtubeVolume]);
-
-  const onPlayerStateChange = (event: YT.OnStateChangeEvent) => {
-    if (event.data === YT.PlayerState.PLAYING) {
-      setIsYoutubeAudioPlaying(true);
-    } else if (
-      event.data === YT.PlayerState.PAUSED ||
-      event.data === YT.PlayerState.ENDED
-    ) {
-      setIsYoutubeAudioPlaying(false);
-    }
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -148,7 +170,7 @@ export default function GoalVisualization() {
         text,
         userId: user.uid,
         createdAt: new Date(),
-        audioData: null, // Initialize audioData as null for new sentences
+        audioData: null,
       };
       setSentences((prev) => [newSentence, ...prev]);
       setTarget("");
@@ -208,7 +230,6 @@ export default function GoalVisualization() {
 
     const lastSentence = sentences[0];
     try {
-      if (!lastSentence.id) throw "no id for sentence";
       await updateSentence(lastSentence.id, { audioData });
       const updatedSentences = sentences.map((sentence, index) =>
         index === 0 ? { ...sentence, audioData } : sentence
@@ -342,21 +363,54 @@ export default function GoalVisualization() {
   };
 
   const playYoutubeAudio = () => {
-    if (youtubePlayerRef.current) {
+    if (
+      youtubePlayerRef.current &&
+      youtubePlayerRef.current.loadVideoById &&
+      isYoutubePlayerReady
+    ) {
       const videoId = getYoutubeVideoId(youtubeUrl);
       if (videoId) {
-        youtubePlayerRef.current.loadVideoById(videoId);
-        youtubePlayerRef.current.playVideo();
+        setIsYoutubeLoading(true);
+        try {
+          youtubePlayerRef.current.loadVideoById({
+            videoId: videoId,
+            startSeconds: 0,
+            suggestedQuality: "small",
+          });
+          youtubePlayerRef.current.playVideo();
+          // Add a small delay to ensure the video starts playing
+          setTimeout(() => {
+            setIsYoutubeLoading(false);
+            setIsYoutubeAudioPlaying(true);
+          }, 1000);
+        } catch (error) {
+          console.error("Error playing YouTube video:", error);
+          setIsYoutubeLoading(false);
+          alert("Error playing YouTube video. Please try again.");
+        }
       } else {
         alert("Invalid YouTube URL");
       }
+    } else {
+      console.error("YouTube player is not ready or fully initialized");
+      alert("YouTube player is not ready. Please try again in a few seconds.");
     }
   };
 
   const stopYoutubeAudio = () => {
-    if (youtubePlayerRef.current) {
+    if (youtubePlayerRef.current && isYoutubePlayerReady) {
       youtubePlayerRef.current.stopVideo();
       setIsYoutubeAudioPlaying(false);
+    } else {
+      console.error("YouTube player is not ready");
+    }
+  };
+
+  const toggleYoutubeAudio = () => {
+    if (isYoutubeAudioPlaying) {
+      stopYoutubeAudio();
+    } else {
+      playYoutubeAudio();
     }
   };
 
@@ -375,9 +429,9 @@ export default function GoalVisualization() {
     return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
   };
 
-  // useEffect(() => {
-  //   setIsRecordingSupported(checkRecordingSupport());
-  // }, []);
+  useEffect(() => {
+    setIsRecordingSupported(checkRecordingSupport());
+  }, [checkRecordingSupport]); // Added checkRecordingSupport to dependencies
 
   if (!user) {
     return (
@@ -469,18 +523,19 @@ export default function GoalVisualization() {
             className="flex-grow px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
           <button
-            onClick={playYoutubeAudio}
-            className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
-            disabled={isYoutubeAudioPlaying}
+            onClick={toggleYoutubeAudio}
+            className={`px-4 py-2 text-white rounded ${
+              isYoutubeAudioPlaying
+                ? "bg-gray-500 hover:bg-gray-600"
+                : "bg-red-500 hover:bg-red-600"
+            }`}
+            disabled={!isYoutubePlayerReady || isYoutubeLoading}
           >
-            Play
-          </button>
-          <button
-            onClick={stopYoutubeAudio}
-            className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
-            disabled={!isYoutubeAudioPlaying}
-          >
-            Stop
+            {isYoutubeLoading
+              ? "Loading..."
+              : isYoutubeAudioPlaying
+              ? "Stop"
+              : "Play"}
           </button>
         </div>
         <div className="flex items-center space-x-2">
@@ -538,11 +593,7 @@ export default function GoalVisualization() {
                 <div className="flex justify-between items-start">
                   <p>{sentence.text}</p>
                   <button
-                    onClick={() => {
-                      if (sentence.id) {
-                        handleDeleteClick(sentence.id);
-                      }
-                    }}
+                    onClick={() => handleDeleteClick(sentence.id)}
                     className="text-red-500 hover:text-red-700"
                     aria-label="Delete sentence"
                   >
@@ -645,7 +696,7 @@ export default function GoalVisualization() {
         href="/"
         className="text-blue-500 hover:underline mt-8 inline-block"
       >
-        Back to Manifest Journal
+        Back to Gratitude Journal
       </Link>
 
       <Dialog open={deleteModalOpen} onOpenChange={setDeleteModalOpen}>
@@ -668,17 +719,10 @@ export default function GoalVisualization() {
         </DialogContent>
       </Dialog>
 
-      <div id="youtube-player"></div>
-      {sentences.length > 0 ? (
-        <div className="mt-8">
-          {/* ... (sentences list JSX remains the same) */}
-        </div>
-      ) : (
-        <p className="mt-8 text-center text-gray-600">
-          You have not created any sentences yet. Start by generating a new
-          sentence above!
-        </p>
-      )}
+      <div
+        id="youtube-player"
+        style={{ position: "absolute", top: "-9999px", left: "-9999px" }}
+      ></div>
     </div>
   );
 }
