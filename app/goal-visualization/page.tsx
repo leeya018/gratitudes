@@ -230,6 +230,9 @@ export default function GoalVisualization() {
 
     const lastSentence = sentences[0];
     try {
+      if (!lastSentence?.id) {
+        throw new Error("last sentence id not define");
+      }
       await updateSentence(lastSentence.id, { audioData });
       const updatedSentences = sentences.map((sentence, index) =>
         index === 0 ? { ...sentence, audioData } : sentence
@@ -298,9 +301,16 @@ export default function GoalVisualization() {
     setCurrentPlayingIndex(null);
   };
 
-  const handleDeleteClick = (id: string) => {
-    setSentenceToDelete(id);
-    setDeleteModalOpen(true);
+  const handleDeleteClick = (id: string | undefined) => {
+    try {
+      if (!id) {
+        throw new Error("id not define");
+      }
+      setSentenceToDelete(id);
+      setDeleteModalOpen(true);
+    } catch (error) {
+      console.log(error);
+    }
   };
 
   const confirmDelete = async () => {
