@@ -54,7 +54,7 @@ export default function YouTubePlayer() {
         events: {
           onReady: onPlayerReady,
           onStateChange: onPlayerStateChange,
-          onError: (event: any) => {
+          onError: (event: YT.OnErrorEvent) => {
             console.error("YouTube player error:", event.data);
             setIsYoutubeLoading(false);
             setIsYoutubeAudioPlaying(false);
@@ -71,6 +71,7 @@ export default function YouTubePlayer() {
   };
 
   const onPlayerReady = (event: YT.PlayerEvent) => {
+    console.log(event);
     console.log("YouTube player is ready");
     setIsYoutubePlayerReady(true);
   };

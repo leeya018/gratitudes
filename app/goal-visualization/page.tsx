@@ -11,8 +11,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Slider } from "@/components/ui/slider";
-import { Trash2, Volume2 } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   addSentence,
