@@ -89,7 +89,9 @@ export default function GoalVisualization() {
     e.preventDefault();
     if (!user) return;
 
-    const text = `I am ${characters} and I am feeling ${emotions} now that ${target}.`;
+    // const text = `I am ${characters} and I am feeling ${emotions} now that ${target}.`;
+    // const text = `${target}עכשיו ש ${emotions}ואני מרגיש ${characters} אני `;
+    const text = `אני ${characters} ואני מרגיש ${emotions} עכשיו שאני ${target}`;
 
     try {
       const id = await addSentence(user.uid, text);
@@ -339,7 +341,7 @@ export default function GoalVisualization() {
             type="text"
             id="target"
             value={target}
-            placeholder="example: I am making 10K dollars a month"
+            placeholder="דוגמה : אני מרוויח 10 אלף שקלים בכל חודש"
             onChange={(e) => setTarget(e.target.value)}
             className="mt-1 block w-full px-4 py-2 text-xl border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
             required
@@ -350,13 +352,13 @@ export default function GoalVisualization() {
             htmlFor="emotions"
             className="block text-sm font-medium text-gray-700"
           >
-            Emotions After Achieving
+            רגשות לאחר שהשגתי
           </label>
           <input
             type="text"
             id="emotions"
             value={emotions}
-            placeholder="example: happy and joy"
+            placeholder="דוגמה : שמח ומאושר"
             onChange={(e) => setEmotions(e.target.value)}
             className="mt-1 block w-full px-4 py-2 text-xl border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
             required
@@ -367,12 +369,12 @@ export default function GoalVisualization() {
             htmlFor="characters"
             className="block text-sm font-medium text-gray-700"
           >
-            Characters of Someone Who Achieved This
+            תכונות של האדם שמשיג את זה
           </label>
           <input
             type="text"
             id="characters"
-            placeholder="example: passionate and creative"
+            placeholder="דוגמה: שאפתן ויצירתי"
             value={characters}
             onChange={(e) => setCharacters(e.target.value)}
             className="mt-1 block w-full px-4 py-2 text-xl border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
