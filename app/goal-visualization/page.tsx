@@ -91,7 +91,7 @@ export default function GoalVisualization() {
 
     // const text = `I am ${characters} and I am feeling ${emotions} now that ${target}.`;
     // const text = `${target}עכשיו ש ${emotions}ואני מרגיש ${characters} אני `;
-    const text = `אני ${characters} ואני מרגיש ${emotions} עכשיו שאני ${target}`;
+    const text = `אני ${characters} ואני מרגיש ${emotions} עכשיו ש${target}`;
 
     try {
       const id = await addSentence(user.uid, text);
