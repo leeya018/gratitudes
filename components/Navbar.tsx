@@ -27,7 +27,7 @@ const Navbar = () => {
     <nav className="bg-blue-500 p-4 fixed top-0 left-0 right-0 z-10">
       <div className="container mx-auto flex justify-between items-center">
         <Link href="/" className="text-white text-2xl font-bold">
-          Gratitude Journal
+          Manifest Journal
         </Link>
         <ul className="flex items-center space-x-4">
           <li>
