@@ -43,6 +43,7 @@ export default function GoalVisualization() {
   const [playAllRepeatDuration, setPlayAllRepeatDuration] =
     useState<RepeatDuration>("none");
   const [loading, setLoading] = useState(true);
+  const [isRecordingSupported, setIsRecordingSupported] = useState(false);
   const { user } = useAuth();
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -89,8 +90,7 @@ export default function GoalVisualization() {
     e.preventDefault();
     if (!user) return;
 
-    // const text = `I am ${characters} and I am feeling ${emotions} now that ${target}.`;
-    // const text = `${target}עכשיו ש ${emotions}ואני מרגיש ${characters} אני `;
+    // const text = `I am ${characters} and I am feeling ${emotions} now that I have ${target}.`;
     const text = `אני ${characters} ואני מרגיש ${emotions} עכשיו ש${target}`;
 
     try {
@@ -172,6 +172,10 @@ export default function GoalVisualization() {
     } catch (error) {
       console.error("Error attaching audio:", error);
     }
+  };
+
+  const deleteRecordedAudio = () => {
+    setAudioData(null);
   };
 
   const playSentenceAudio = (
@@ -307,7 +311,7 @@ export default function GoalVisualization() {
   };
 
   useEffect(() => {
-    // setIsRecordingSupported(checkRecordingSupport());
+    setIsRecordingSupported(checkRecordingSupport());
   }, []);
 
   if (!user) {
@@ -335,7 +339,7 @@ export default function GoalVisualization() {
             htmlFor="target"
             className="block text-sm font-medium text-gray-700"
           >
-            Your Target
+            המטרה שלך
           </label>
           <input
             type="text"
@@ -496,7 +500,7 @@ export default function GoalVisualization() {
       {sentences.length > 0 && !sentences[0].audioData && (
         <div className="mt-4">
           <h3 className="text-xl font-bold mb-2">Record Your Sentence</h3>
-          {checkRecordingSupport() ? (
+          {isRecordingSupported ? (
             <>
               {!isRecording && !audioData && (
                 <button
@@ -521,14 +525,22 @@ export default function GoalVisualization() {
             </p>
           )}
           {audioData && (
-            <div>
-              <audio src={audioData} controls className="mt-2" />
-              <button
-                onClick={attachAudioToLastSentence}
-                className="mt-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-              >
-                Attach Recording to Sentence
-              </button>
+            <div className="mt-2">
+              <audio src={audioData} controls className="mb-2" />
+              <div className="flex space-x-2">
+                <button
+                  onClick={attachAudioToLastSentence}
+                  className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                >
+                  Attach Recording to Sentence
+                </button>
+                <button
+                  onClick={deleteRecordedAudio}
+                  className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
+                >
+                  Delete Recording
+                </button>
+              </div>
             </div>
           )}
         </div>
