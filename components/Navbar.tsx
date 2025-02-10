@@ -5,12 +5,13 @@ import Image from "next/image";
 import { useAuth } from "@/contexts/AuthContext";
 import { signOut } from "firebase/auth";
 import { auth } from "@/lib/firebase";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { useState } from "react";
 
 const Navbar = () => {
   const { user } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
   const [imageError, setImageError] = useState(false);
 
   const handleSignOut = async () => {
@@ -26,24 +27,36 @@ const Navbar = () => {
     <nav className="bg-blue-500 p-4 fixed top-0 left-0 right-0 z-10">
       <div className="container mx-auto flex justify-between items-center">
         <Link href="/" className="text-white text-2xl font-bold">
-          Manifest Journal
+          Gratitude Journal
         </Link>
         <ul className="flex items-center space-x-4">
           <li>
-            <Link href="/" className="text-white hover:text-blue-200">
-              Home
+            <Link
+              href="/"
+              className={`text-white hover:text-blue-200 ${
+                pathname === "/" ? "underline" : ""
+              }`}
+            >
+              Daily Gratitudes
             </Link>
           </li>
           <li>
             <Link
               href="/goal-visualization"
-              className="text-white hover:text-blue-200"
+              className={`text-white hover:text-blue-200 ${
+                pathname === "/goal-visualization" ? "underline" : ""
+              }`}
             >
               Goal Visualization
             </Link>
           </li>
           <li>
-            <Link href="/home" className="text-white hover:text-blue-200">
+            <Link
+              href="/home"
+              className={`text-white hover:text-blue-200 ${
+                pathname === "/home" ? "underline" : ""
+              }`}
+            >
               All Gratitudes
             </Link>
           </li>
